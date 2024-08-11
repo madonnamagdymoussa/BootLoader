@@ -10,6 +10,10 @@
 static uint8_t Host_buffer[200];
 
 static uint8_t BL_CRC_verify(uint8_t *pdata, uint32_t DataLen, uint32_t HostCRC);
+static void BL_Send_ACK(uint8_t dataLen);
+static void BL_Send_NACK();
+static void BL_Get_Version(uint8_t *Host_buffer);
+
 
 void BL_SendMessage(char *format, ...){
 
@@ -63,7 +67,7 @@ BL_Status BL_FetchHostCommand(){
 	BL_Status status=BL_NACK;
 	HAL_StatusTypeDef Hal_status = HAL_ERROR;
 	uint8_t DataLen=0;
-	Hal_status=HAL_UART_Transmit(&huart2,Host_buffer,1,HAL_MAX_DELAY);
+	Hal_status=HAL_UART_Receive(&huart2,Host_buffer,1,HAL_MAX_DELAY);
 
 	if(Hal_status != HAL_OK){
 		status=BL_NACK;
@@ -71,7 +75,7 @@ BL_Status BL_FetchHostCommand(){
 
 	else{
 		DataLen=Host_buffer[0];
-		Hal_status=HAL_UART_Transmit(&huart2,&Host_buffer[1],DataLen,HAL_MAX_DELAY);
+		Hal_status=HAL_UART_Receive(&huart2,&Host_buffer[1],DataLen,HAL_MAX_DELAY);
 		if(Hal_status !=HAL_OK){
 			status=BL_NACK;
 		}
@@ -107,6 +111,8 @@ BL_Status BL_FetchHostCommand(){
 			}
 		}
 	}
+
+	return status;
 }
 
 static uint8_t BL_CRC_verify(uint8_t *pdata, uint32_t DataLen, uint32_t HostCRC){
@@ -118,11 +124,12 @@ static uint8_t BL_CRC_verify(uint8_t *pdata, uint32_t DataLen, uint32_t HostCRC)
 	for(uint8_t count=0; count<DataLen;count++){
 		dataBuffer=(uint32_t)pdata[count];
 		MCU_CRC=HAL_CRC_Accumulate(&hcrc,&dataBuffer,1);
-
 	}
+
 	if(HostCRC == MCU_CRC){
 		crc_status=CRC_VERIFING_PASS;
 	}
+
 	else{
 		crc_status=CRC_VERIFING_FAILED;
 	}
@@ -130,9 +137,26 @@ static uint8_t BL_CRC_verify(uint8_t *pdata, uint32_t DataLen, uint32_t HostCRC)
 	return crc_status;
 }
 
+static void BL_Send_ACK(uint8_t dataLen){
+
+	uint8_t ACK_value[2]={0};
+	ACK_value[0]=SEND_ACK;
+	ACK_value[1]=dataLen;
+    HAL_UART_Transmit(&huart2,(uint8_t*)ACK_value,2,HAL_MAX_DELAY);
+}
+
+static void BL_Send_NACK(){
+
+	uint8_t  ACK_Value=SEND_NACK;
+	HAL_UART_Transmit(&huart2,&ACK_Value,sizeof(ACK_Value),HAL_MAX_DELAY);
+}
+
+static void BL_Get_Version(uint8_t *Host_buffer){
+
+	uint8_t version[4]={CBL_VENDOR_ID,CBL_SW_MAJOR_VERSION,CBL_SW_MINOR_VERSION,CBL_SW_PATCH_VERSION};
+	uint16_t Host_Packet_Len=0;
+    uint32_t CRC_Value=0;
 
 
 
-
-
-
+}
